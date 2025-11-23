@@ -190,8 +190,9 @@ pub fn gen_tree(rng: &mut ThreadRng, seed: Seed) -> Tree {
     }
 }
 
-pub fn generate_level(side_len: i32) -> Vec<Block> {
-    let seed = Seed { x: (0, side_len), y: (0, side_len), z: (0, side_len) };
+pub fn generate_level(side_len: u8) -> Vec<Block> {
+    let len = side_len as i32;
+    let seed = Seed { x: (0, len), y: (0, len), z: (0, len) };
     let mut rng = rand::rng();
     let tree = gen_tree(&mut rng, seed);
     let gblocks = flatten_tree(&tree);

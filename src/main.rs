@@ -42,7 +42,7 @@ pub struct MoveDest {
 }
 
 #[derive(Component)]
-pub struct Cube;
+pub struct BlockSceneMarker;
 
 pub fn rotate_axis_to_axis(ax_from: &block::Axis, ax_to: &block::Axis) -> Quat {
     match ax_from.remaining(ax_to) {
@@ -116,7 +116,7 @@ fn draw_blocks(
             Transform::from_translation(block_center - level_center)
                 .with_scale(Vec3::splat(0.5))
                 .with_rotation(rotation),
-            Cube,
+            BlockSceneMarker,
         ))
         .observe(print_on_click);
     }
@@ -128,6 +128,7 @@ fn spawn_blocks(
     levelr: Res<Assets<Level>>,
     handle: Res<LevelHandle>,
     models: Res<BlockModels>,
+    current_level: Res<CurrentLevel>,
     mut state: ResMut<NextState<LevelLoadingState>>,
 ) {
     let levelx = Level(vec![
@@ -168,11 +169,12 @@ fn spawn_blocks(
     //     draw_blocks(commands, &levelx, models);
     // }
     // draw_blocks(commands, &levelx, models);
-    draw_blocks(commands, &Level(generation::generate_level(5)), models);
+    let width = current_level.0 + 2; // width starts at 3 from level 1
+    draw_blocks(commands, &Level(generation::generate_level(width)), models);
     state.set(LevelLoadingState::Level);
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_level(mut commands: Commands, asset_server: Res<AssetServer>) {
     let level = LevelHandle(asset_server.load("level1.json"));
     let small_model = asset_server.load("small_model.glb#Scene0");
     let wide_model = asset_server.load("wide_model.glb#Scene0");
@@ -184,11 +186,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Camera3d::default(),
         PanOrbitCamera::default(),
         Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        BlockSceneMarker,
     ));
 
     commands.spawn((
         DirectionalLight::default(),
         Transform::from_xyz(3.0, 3.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
+        BlockSceneMarker,
     ));
 }
 
@@ -263,11 +267,128 @@ fn animate_moving_blocks(
     }
 }
 
+fn finish_level_if_done(
+    mut commands: Commands,
+    scene_query: Query<Entity, With<BlockSceneMarker>>,
+    blocks_query: Query<&block::Block>,
+    mut next_level: ResMut<CurrentLevel>,
+    mut istate: ResMut<NextState<Interface>>,
+) {
+    if blocks_query.iter().count() == 0 {
+        scene_query.iter().for_each(|e| commands.entity(e).despawn());
+        let current_level = next_level.0;
+        *next_level = CurrentLevel(current_level + 1);
+        istate.set(Interface::Menu);
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 enum LevelLoadingState {
     #[default]
     Loading,
     Level,
+}
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
+enum Interface {
+    #[default]
+    Menu,
+    Gameplay,
+}
+
+#[derive(Resource)]
+struct CurrentLevel(u8);
+
+#[derive(Component)]
+struct MenuMarker;
+
+fn text(level: u8) -> impl Bundle {
+    (
+        Text::new(format!("Next: Level {}", level)),
+        TextFont {
+            font_size: 33.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+        TextShadow::default(),
+    )
+}
+
+fn button() -> impl Bundle {
+    (
+        Button,
+        Node {
+            width: Val::Px(300.0),
+            height: Val::Px(65.0),
+            border: UiRect::all(Val::Px(5.0)),
+            // horizontally center child text
+            justify_content: JustifyContent::Center,
+            // vertically center child text
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        BorderColor::from(Color::WHITE),
+        BorderRadius::MAX,
+        BackgroundColor(Color::BLACK),
+        children![(
+            Text::new("Start playing"),
+            TextFont {
+                font_size: 33.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.9, 0.9, 0.9)),
+            TextShadow::default(),
+        )]
+    )
+}
+
+fn draw_menu(level: u8) -> impl Bundle {
+    (
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(10.0),
+            ..default()
+        },
+        // TabGroup::default(),
+        children![
+            text(level),
+            button(),
+        ],
+    )
+}
+
+fn button_system(
+    mut commands: Commands,
+    mut interaction_query: Query<
+        (
+            Entity,
+            &Interaction,
+            &mut Button,
+        ),
+        Changed<Interaction>,
+    >,
+    menu_elements_query: Query<Entity, With<MenuMarker>>,
+    mut istate: ResMut<NextState<Interface>>,
+) {
+    for (entity, interaction, button) in interaction_query.iter_mut() {
+        if let Interaction::Pressed = *interaction {
+            menu_elements_query.iter().for_each(|e| commands.entity(e).despawn());
+            istate.set(Interface::Gameplay);
+        }
+    }
+}
+
+fn setup_menu(
+    mut commands: Commands,
+    level: Res<CurrentLevel>,
+) {
+    commands.spawn((Camera2d, MenuMarker));
+    commands.spawn((draw_menu(level.0), MenuMarker));
 }
 
 fn main() {
@@ -281,11 +402,14 @@ fn main() {
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(PanOrbitCameraPlugin)
         .init_state::<LevelLoadingState>()
-        .add_systems(Startup, setup)
-        .add_systems(Update, spawn_blocks.run_if(in_state(LevelLoadingState::Loading)))
-        .add_systems(Update, animate_moving_blocks)
+        .insert_resource(CurrentLevel(1))
+        .init_state::<Interface>()
+        .add_systems(OnEnter(Interface::Menu), setup_menu)
+        .add_systems(Update, button_system.run_if(in_state(Interface::Menu)))
+        .add_systems(OnEnter(Interface::Gameplay), (setup_level, spawn_blocks).chain())
+        .add_systems(Update, animate_moving_blocks.run_if(in_state(Interface::Gameplay)))
+        .add_systems(Update, finish_level_if_done.run_if(in_state(Interface::Gameplay)))
         .register_type::<MoveDest>()
         .register_type::<block::Block>()
         .run();
-
 }
