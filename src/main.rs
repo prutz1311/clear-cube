@@ -104,7 +104,7 @@ pub fn block_model_rotation(block: &block::Block, models: &BlockModels) -> (Hand
 fn draw_blocks(
     mut commands: Commands,
     level: &Level,
-    models: Res<BlockModels>,
+    models: BlockModels,
 ) {
     let level_center = level.center();
     for b in level.0.iter() {
@@ -123,14 +123,32 @@ fn draw_blocks(
     commands.insert_resource(LevelCenter(level_center));
 }
 
-fn spawn_blocks(
-    commands: Commands,
+fn setup_level(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
     levelr: Res<Assets<Level>>,
-    handle: Res<LevelHandle>,
-    models: Res<BlockModels>,
     current_level: Res<CurrentLevel>,
     mut state: ResMut<NextState<LevelLoadingState>>,
 ) {
+    let level = LevelHandle(asset_server.load("level1.json"));
+    let small_model = asset_server.load("small_model.glb#Scene0");
+    let wide_model = asset_server.load("wide_model.glb#Scene0");
+    let long_model = asset_server.load("long_model.glb#Scene0");
+    commands.insert_resource(level);
+    let models = BlockModels { small_model, wide_model, long_model };
+
+    commands.spawn((
+        Camera3d::default(),
+        PanOrbitCamera::default(),
+        Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        BlockSceneMarker,
+    ));
+
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_xyz(3.0, 3.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
+        BlockSceneMarker,
+    ));
     let levelx = Level(vec![
         block::Block {
             direction: block::Direction::ZP,
@@ -172,28 +190,6 @@ fn spawn_blocks(
     let width = current_level.0 + 2; // width starts at 3 from level 1
     draw_blocks(commands, &Level(generation::generate_level(width)), models);
     state.set(LevelLoadingState::Level);
-}
-
-fn setup_level(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let level = LevelHandle(asset_server.load("level1.json"));
-    let small_model = asset_server.load("small_model.glb#Scene0");
-    let wide_model = asset_server.load("wide_model.glb#Scene0");
-    let long_model = asset_server.load("long_model.glb#Scene0");
-    commands.insert_resource(level);
-    commands.insert_resource(BlockModels { small_model, wide_model, long_model });
-
-    commands.spawn((
-        Camera3d::default(),
-        PanOrbitCamera::default(),
-        Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
-        BlockSceneMarker,
-    ));
-
-    commands.spawn((
-        DirectionalLight::default(),
-        Transform::from_xyz(3.0, 3.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
-        BlockSceneMarker,
-    ));
 }
 
 fn print_on_click(
@@ -406,7 +402,7 @@ fn main() {
         .init_state::<Interface>()
         .add_systems(OnEnter(Interface::Menu), setup_menu)
         .add_systems(Update, button_system.run_if(in_state(Interface::Menu)))
-        .add_systems(OnEnter(Interface::Gameplay), (setup_level, spawn_blocks).chain())
+        .add_systems(OnEnter(Interface::Gameplay), setup_level)
         .add_systems(Update, animate_moving_blocks.run_if(in_state(Interface::Gameplay)))
         .add_systems(Update, finish_level_if_done.run_if(in_state(Interface::Gameplay)))
         .register_type::<MoveDest>()
