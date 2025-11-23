@@ -136,51 +136,17 @@ fn setup_level(
     let long_model = asset_server.load("long_model.glb#Scene0");
     commands.insert_resource(level);
     let models = BlockModels { small_model, wide_model, long_model };
-
     commands.spawn((
         Camera3d::default(),
         PanOrbitCamera::default(),
         Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
         BlockSceneMarker,
     ));
-
     commands.spawn((
         DirectionalLight::default(),
         Transform::from_xyz(3.0, 3.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
         BlockSceneMarker,
     ));
-    let levelx = Level(vec![
-        block::Block {
-            direction: block::Direction::ZP,
-            min: IVec3::new(0,0,0),
-            max: IVec3::new(1,1,1)
-        },
-        block::Block {
-            direction: block::Direction::ZP,
-            min: IVec3::new(1,0,0),
-            max: IVec3::new(2,1,1)
-        },
-        block::Block {
-            direction: block::Direction::ZP,
-            min: IVec3::new(2,0,0),
-            max: IVec3::new(3,2,1)
-        },
-        block::Block {
-            direction: block::Direction::XN,
-            min: IVec3::new(3,0,0),
-            max: IVec3::new(4,1,2)
-        },
-        block::Block {
-            direction: block::Direction::XN,
-            min: IVec3::new(4,0,0),
-            max: IVec3::new(6,1,1)
-        },
-        block::Block {
-            direction: block::Direction::XN,
-            min: IVec3::new(1,0,5),
-            max: IVec3::new(3,1,6)
-        },
-    ]);
     // if let Some(level) = levelr.get(handle.0.id()) {
     //     let blocks: Vec<block::Block> = level.0.clone();
     //     let levelx = Level(blocks);
@@ -360,18 +326,11 @@ fn draw_menu(level: u8) -> impl Bundle {
 
 fn button_system(
     mut commands: Commands,
-    mut interaction_query: Query<
-        (
-            Entity,
-            &Interaction,
-            &mut Button,
-        ),
-        Changed<Interaction>,
-    >,
+    interaction_query: Query<&Interaction, Changed<Interaction>>,
     menu_elements_query: Query<Entity, With<MenuMarker>>,
     mut istate: ResMut<NextState<Interface>>,
 ) {
-    for (entity, interaction, button) in interaction_query.iter_mut() {
+    for interaction in interaction_query.iter() {
         if let Interaction::Pressed = *interaction {
             menu_elements_query.iter().for_each(|e| commands.entity(e).despawn());
             istate.set(Interface::Gameplay);
