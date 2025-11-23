@@ -118,7 +118,7 @@ fn draw_blocks(
                 .with_rotation(rotation),
             BlockSceneMarker,
         ))
-        .observe(print_on_click);
+        .observe(send_block_on_click);
     }
     commands.insert_resource(LevelCenter(level_center));
 }
@@ -192,7 +192,7 @@ fn setup_level(
     state.set(LevelLoadingState::Level);
 }
 
-fn print_on_click(
+fn send_block_on_click(
     click: Trigger<Pointer<Click>>,
     mut commands: Commands,
     mut transforms: Query<(Entity, &mut block::Block, &mut Transform), Without<MoveDest>>,
