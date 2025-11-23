@@ -1,13 +1,9 @@
-use bevy_common_assets::json::JsonAssetPlugin;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 mod block;
 mod generation;
-
-#[derive(Resource)]
-pub struct LevelHandle(Handle<Level>);
 
 #[derive(Resource)]
 pub struct BlockModels {
@@ -126,15 +122,11 @@ fn draw_blocks(
 fn setup_level(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    levelr: Res<Assets<Level>>,
     current_level: Res<CurrentLevel>,
-    mut state: ResMut<NextState<LevelLoadingState>>,
 ) {
-    let level = LevelHandle(asset_server.load("level1.json"));
     let small_model = asset_server.load("small_model.glb#Scene0");
     let wide_model = asset_server.load("wide_model.glb#Scene0");
     let long_model = asset_server.load("long_model.glb#Scene0");
-    commands.insert_resource(level);
     let models = BlockModels { small_model, wide_model, long_model };
     commands.spawn((
         Camera3d::default(),
@@ -147,15 +139,8 @@ fn setup_level(
         Transform::from_xyz(3.0, 3.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
         BlockSceneMarker,
     ));
-    // if let Some(level) = levelr.get(handle.0.id()) {
-    //     let blocks: Vec<block::Block> = level.0.clone();
-    //     let levelx = Level(blocks);
-    //     draw_blocks(commands, &levelx, models);
-    // }
-    // draw_blocks(commands, &levelx, models);
     let width = current_level.0 + 2; // width starts at 3 from level 1
     draw_blocks(commands, &Level(generation::generate_level(width)), models);
-    state.set(LevelLoadingState::Level);
 }
 
 fn send_block_on_click(
@@ -242,13 +227,6 @@ fn finish_level_if_done(
         *next_level = CurrentLevel(current_level + 1);
         istate.set(Interface::Menu);
     }
-}
-
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
-enum LevelLoadingState {
-    #[default]
-    Loading,
-    Level,
 }
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
@@ -351,12 +329,10 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             MeshPickingPlugin,
-            JsonAssetPlugin::<Level>::new(&["level1.json"]),
         ))
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(PanOrbitCameraPlugin)
-        .init_state::<LevelLoadingState>()
         .insert_resource(CurrentLevel(1))
         .init_state::<Interface>()
         .add_systems(OnEnter(Interface::Menu), setup_menu)

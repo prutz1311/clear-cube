@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.16.1"
-bevy_common_assets = { version = "0.13.0", features = ["json"] }
 bevy-inspector-egui = "0.33.1"
 bevy_panorbit_camera = "0.27.1"
 num = "0.4.3"
