@@ -1,7 +1,5 @@
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy::prelude::*;
-use bevy_egui::EguiPlugin;
 mod block;
 mod generation;
 
@@ -329,10 +327,8 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             MeshPickingPlugin,
+            PanOrbitCameraPlugin,
         ))
-        .add_plugins(EguiPlugin::default())
-        .add_plugins(WorldInspectorPlugin::new())
-        .add_plugins(PanOrbitCameraPlugin)
         .insert_resource(CurrentLevel(1))
         .init_state::<Interface>()
         .add_systems(OnEnter(Interface::Menu), setup_menu)
