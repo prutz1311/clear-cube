@@ -156,9 +156,6 @@ impl Block {
         let ahead = self.direction.unit_vector().dot(diff) >= 1.0;
         let in_the_way = self.direction.axis.remaining_two().iter()
             .all(|ax: &Axis| ax.vec3_component(diff).abs() < 1.0);
-        // info!("possible_collision: self: {:?}, b: {:?}", self.clone().extract_mm(), b.clone().extract_mm());
-        // info!("diff: {:?}", diff);
-        // info!("(not_self, ahead, in_the_way): {:?}", (not_self, ahead, in_the_way));
         not_self && ahead && in_the_way
     }
 
