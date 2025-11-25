@@ -2,7 +2,7 @@ use bevy::math::*;
 use bevy::prelude::{Component, Reflect};
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Component, Reflect)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Component, Reflect)]
 pub enum Axis { X, Y, Z }
 
 impl Axis {
@@ -66,7 +66,7 @@ impl Axis {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Component, Reflect)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Component, Reflect)]
 pub struct Direction {
     pub axis: Axis,
     pub positive: bool,
@@ -109,7 +109,7 @@ fn check_overlap_in_direction(b1: &Block, b2: &Block, direction: &Direction) -> 
     check_overlap_rectangles(rect1, rect2)
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Component, Reflect, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Component, Reflect, PartialEq)]
 pub struct Block {
     pub direction: Direction,
     pub min: IVec3,
@@ -184,14 +184,14 @@ impl Block {
 
     pub fn move_block(self: &Self, static_block: &Self) -> Option<Self> {
         if check_overlap_in_direction(self, static_block, &self.direction) {
-        let length = if self.get_elongation() == Some(self.direction.axis.clone()) { 2 } else { 1 };
+        let length = if self.get_elongation() == Some(self.direction.axis) { 2 } else { 1 };
         match self.direction {
             Direction::XP =>
                 if self.max.x <= static_block.min.x { 
                     Some(Self {
                         min: IVec3 { x: static_block.min.x - length, ..self.min },
                         max: IVec3 { x: static_block.min.x, ..self.max },
-                        ..self.clone()
+                        ..*self
                     })
                 }
                 else {
@@ -202,7 +202,7 @@ impl Block {
                     Some(Self {
                         min: IVec3 { x: static_block.max.x, ..self.min },
                         max: IVec3 { x: static_block.max.x + length, ..self.max },
-                        ..self.clone()
+                        ..*self
                     })
                 }
                 else {
@@ -213,7 +213,7 @@ impl Block {
                     Some(Self {
                         min: IVec3 { y: static_block.min.y - length, ..self.min },
                         max: IVec3 { y: static_block.min.y, ..self.max },
-                        ..self.clone()
+                        ..*self
                     })
                 }
                 else {
@@ -224,7 +224,7 @@ impl Block {
                     Some(Self {
                         min: IVec3 { y: static_block.max.y, ..self.min },
                         max: IVec3 { y: static_block.max.y + length, ..self.max },
-                        ..self.clone()
+                        ..*self
                     })
                 }
                 else {
@@ -235,7 +235,7 @@ impl Block {
                     Some(Self {
                         min: IVec3 { z: static_block.min.z - length, ..self.min },
                         max: IVec3 { z: static_block.min.z, ..self.max },
-                        ..self.clone()
+                        ..*self
                     })
                 }
                 else {
@@ -246,7 +246,7 @@ impl Block {
                     Some(Self {
                         min: IVec3 { z: static_block.max.z, ..self.min },
                         max: IVec3 { z: static_block.max.z + length, ..self.max },
-                        ..self.clone()
+                        ..*self
                     })
                 }
                 else {

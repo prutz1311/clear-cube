@@ -64,7 +64,7 @@ pub fn flip_if_necessary(dir: &block::Direction, ax: &block::Axis) -> Quat {
 
 pub fn block_model_rotation(block: &block::Block, models: &BlockModels) -> (Handle<Scene>, Quat) {
     let el: Option<block::Axis> = block.get_elongation();
-    let dir: block::Direction = block.direction.clone();
+    let dir: block::Direction = block.direction;
     let dir_rotation = flip_if_necessary(&dir, &block::Axis::X);
     let axis_rotation = rotate_axis_to_axis(&block::Axis::Y, &dir.axis);
     match el {
@@ -106,7 +106,7 @@ fn draw_blocks(
         let (model, rotation) = block_model_rotation(b, &models);
         commands.spawn((
             SceneRoot(model),
-            b.clone(),
+            *b,
             Transform::from_translation(block_center - level_center)
                 .with_scale(Vec3::splat(0.5))
                 .with_rotation(rotation),
@@ -147,7 +147,7 @@ fn send_block_on_click(
     mut transforms: Query<(Entity, &mut block::Block, &mut Transform), Without<MoveDest>>,
     level_center: Res<LevelCenter>
 ) {
-    let all_blocks: Vec<block::Block> = transforms.iter().map(|t| t.1.clone()).collect();
+    let all_blocks: Vec<block::Block> = transforms.iter().map(|t| *t.1).collect();
     let (entity_id, mut block, transform) = transforms.get_mut(click.target()).unwrap();
     use PointerButton as P;
     match click.event.button {
@@ -156,9 +156,9 @@ fn send_block_on_click(
         },
         P::Primary => {
             let nearest = block.get_nearest_block_in_front(all_blocks.iter().cloned());
-            let pos_opt = nearest.clone().and_then(|b| block.move_block(&b.clone()));
+            let pos_opt = nearest.and_then(|b| block.move_block(&b));
             let should_despawn = pos_opt.is_none();
-            let new_block = pos_opt.clone().unwrap_or(get_flyaway_block_position(&block));
+            let new_block = pos_opt.unwrap_or(get_flyaway_block_position(&block));
             if new_block != *block {
                 commands.entity(entity_id).insert(MoveDest{ dest: new_block.get_center() - level_center.0, should_despawn });
                 *block = new_block;
@@ -170,7 +170,7 @@ fn send_block_on_click(
 
 fn get_flyaway_block_position(block: &block::Block) -> block::Block {
     const EDGE: i32 = 20;
-    let block::Block { direction, min, max } = block.clone();
+    let block::Block { direction, min, max } = *block;
     let size: IVec3 = block.get_isize();
     use block::Direction as D;
     let (new_min, new_max) = match direction {
@@ -190,7 +190,7 @@ fn animate_moving_blocks(
     time: Res<Time>,
 ) {
     for (entity_id, mut tr, block, move_dest) in query.iter_mut() {
-        let movement_dir = block.direction.clone().unit_vector();
+        let movement_dir = block.direction.unit_vector();
         let new_translation =
             tr.translation + 16.0 * time.delta_secs() * movement_dir;
         let diff = move_dest.dest - new_translation;

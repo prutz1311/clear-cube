@@ -11,7 +11,7 @@ pub enum Tree {
 fn flatten_tree_rec(t: &Tree, acc: &mut Vec<GBlock>) -> () {
     match t {
         Tree::Leaf(x) => {
-            acc.push(x.clone())
+            acc.push(*x)
         },
         Tree::Node(l, r) => {
             flatten_tree_rec(l, acc);
@@ -82,7 +82,7 @@ pub fn random_direction(rng: &mut ThreadRng) -> Direction {
     Direction { axis, positive }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct GBlock {
     pub direction: Option<Direction>,
     pub min: IVec3,
