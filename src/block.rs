@@ -64,6 +64,22 @@ impl Axis {
             Self::Z => v.z,
         }
     }
+
+    pub fn ivec3_component(self: &Self, v: IVec3) -> i32 {
+        match self {
+            Self::X => v.x,
+            Self::Y => v.y,
+            Self::Z => v.z,
+        }
+    }
+
+    pub fn set_ivec3_component(self: &Self, v: &IVec3, new_value: i32) -> IVec3 {
+        match self {
+            Self::X => IVec3 { x: new_value, ..*v },
+            Self::Y => IVec3 { y: new_value, ..*v },
+            Self::Z => IVec3 { z: new_value, ..*v },
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Component, Reflect)]
@@ -181,75 +197,33 @@ impl Block {
 
     pub fn move_block(self: &Self, static_block: &Self) -> Option<Self> {
         if check_overlap_in_direction(self, static_block, &self.direction) {
-        let length = if self.get_elongation() == Some(self.direction.axis) { 2 } else { 1 };
-        match self.direction {
-            Direction::XP =>
-                if self.max.x <= static_block.min.x { 
-                    Some(Self {
-                        min: IVec3 { x: static_block.min.x - length, ..self.min },
-                        max: IVec3 { x: static_block.min.x, ..self.max },
-                        ..*self
-                    })
-                }
-                else {
-                    None
-                },
-            Direction::XN =>
-                if self.max.x >= static_block.min.x { 
-                    Some(Self {
-                        min: IVec3 { x: static_block.max.x, ..self.min },
-                        max: IVec3 { x: static_block.max.x + length, ..self.max },
-                        ..*self
-                    })
-                }
-                else {
-                    None
-                },
-            Direction::YP =>
-                if self.max.y <= static_block.min.y { 
-                    Some(Self {
-                        min: IVec3 { y: static_block.min.y - length, ..self.min },
-                        max: IVec3 { y: static_block.min.y, ..self.max },
-                        ..*self
-                    })
-                }
-                else {
-                    None
-                },
-            Direction::YN =>
-                if self.max.y >= static_block.min.y { 
-                    Some(Self {
-                        min: IVec3 { y: static_block.max.y, ..self.min },
-                        max: IVec3 { y: static_block.max.y + length, ..self.max },
-                        ..*self
-                    })
-                }
-                else {
-                    None
-                },
-            Direction::ZP =>
-                if self.max.z <= static_block.min.z { 
-                    Some(Self {
-                        min: IVec3 { z: static_block.min.z - length, ..self.min },
-                        max: IVec3 { z: static_block.min.z, ..self.max },
-                        ..*self
-                    })
-                }
-                else {
-                    None
-                },
-            Direction::ZN =>
-                if self.max.z >= static_block.min.z { 
-                    Some(Self {
-                        min: IVec3 { z: static_block.max.z, ..self.min },
-                        max: IVec3 { z: static_block.max.z + length, ..self.max },
-                        ..*self
-                    })
-                }
-                else {
-                    None
-                },
-        }
+            let length = if self.get_elongation() == Some(self.direction.axis) { 2 } else { 1 };
+
+            let Direction { axis, positive } = self.direction;
+            match positive {
+                true  =>
+                    if axis.ivec3_component(self.max) <= axis.ivec3_component(static_block.min) {
+                        Some(Self {
+                            min: axis.set_ivec3_component(&self.min, axis.ivec3_component(static_block.min) - length),
+                            max: axis.set_ivec3_component(&self.max, axis.ivec3_component(static_block.min)),
+                            ..*self
+                        })
+                    }
+                    else {
+                        None
+                    },
+                false =>
+                    if axis.ivec3_component(self.max) >= axis.ivec3_component(static_block.min) {
+                        Some(Self {
+                            min: axis.set_ivec3_component(&self.min, axis.ivec3_component(static_block.max)),
+                            max: axis.set_ivec3_component(&self.max, axis.ivec3_component(static_block.max) + length),
+                            ..*self
+                        })
+                    }
+                    else {
+                        None
+                    }
+            } 
         }
         else {
             None
