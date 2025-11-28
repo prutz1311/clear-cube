@@ -198,3 +198,9 @@ pub fn generate_level(side_len: u8) -> Vec<Block> {
     let gblocks = flatten_tree(&tree);
     gblocks_to_blocks(gblocks.as_slice())
 }
+
+pub fn remove_locked_blocks(blocks: Vec<Block>) -> Vec<Block> {
+    let lower = blocks.iter().fold(IVec3::MAX, |acc, v| acc.min(v.min));
+    let upper = blocks.iter().fold(IVec3::MIN, |acc, v| acc.max(v.max));
+    vec![]
+}
