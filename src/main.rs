@@ -323,9 +323,16 @@ fn setup_menu(
 }
 
 fn main() {
+    let app_window = Some(Window {
+      title: String::from("Clear Cube"),
+      ..default()
+    });
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: app_window,
+                ..default()
+            }),
             MeshPickingPlugin,
             PanOrbitCameraPlugin,
         ))
