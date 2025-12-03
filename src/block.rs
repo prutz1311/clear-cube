@@ -89,7 +89,7 @@ pub struct Direction {
 }
 
 impl Direction {
-    pub fn new(axis: Axis, positive: bool) -> Self {
+    pub const fn new(axis: Axis, positive: bool) -> Self {
         Self { axis, positive }
     }
 

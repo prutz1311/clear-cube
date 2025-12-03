@@ -1,5 +1,5 @@
 use crate::block::*;
-use bevy::math::IVec3;
+use bevy::math::{IVec2, IVec3, Vec2, Vec3};
 use rand::{Rng, rngs::ThreadRng};
 use rand::prelude::*;
 
@@ -196,11 +196,66 @@ pub fn generate_level(side_len: u8) -> Vec<Block> {
     let mut rng = rand::rng();
     let tree = gen_tree(&mut rng, seed);
     let gblocks = flatten_tree(&tree);
-    gblocks_to_blocks(gblocks.as_slice())
+    let mut blocks: Vec<Block> = gblocks_to_blocks(gblocks.as_slice());
+    remove_locked(&mut blocks);
+    blocks
 }
 
-pub fn remove_locked_blocks(blocks: Vec<Block>) -> Vec<Block> {
+pub fn locked_blocks_to_remove(blocks: &[Block]) -> Vec<Block> {
+    let mut forward: Vec<Block> = Vec::new();
+    let mut backward: Vec<Block> = Vec::new();
+    for block in blocks.iter() {
+        let seen_positive: bool = !forward.is_empty();
+        let seen_negative: bool = !backward.is_empty();
+        if !seen_negative && block.direction.positive {
+            forward.push(*block);
+        }
+        if seen_positive && !block.direction.positive {
+            backward.push(*block);
+        }
+    }
+    if !forward.is_empty() && !backward.is_empty() {
+        forward.iter().chain(backward.iter()).copied().collect()
+    }
+    else {
+        Vec::new()
+    }
+}
+
+pub fn project_vec(v: Vec3, axes: [Axis; 2]) -> Vec2 {
+    Vec2::new(axes[0].vec3_component(v), axes[1].vec3_component(v))
+}
+
+pub fn project_ivec(v: IVec3, axes: [Axis; 2]) -> IVec2 {
+    IVec2::new(axes[0].ivec3_component(v), axes[1].ivec3_component(v))
+}
+
+pub fn extract_along_line(dir: &Axis, point: Vec2, blocks: &[Block]) -> Vec<Block> {
+    let other = dir.remaining_two();
+    blocks.iter()
+        .filter(|b: &&Block| {
+            let proj = project_vec(b.get_center(), other);
+            let manhattan_dist = (proj - point).abs().element_sum();
+            manhattan_dist <= 0.5
+        })
+        .copied()
+        .collect()
+}
+
+pub fn remove_locked(blocks: &mut Vec<Block>) {
     let lower = blocks.iter().fold(IVec3::MAX, |acc, v| acc.min(v.min));
     let upper = blocks.iter().fold(IVec3::MIN, |acc, v| acc.max(v.max));
-    vec![]
+    for axis in Axis::ALL.iter() {
+        let remaining = axis.remaining_two();
+        let lower_proj = project_ivec(lower, remaining);
+        let upper_proj = project_ivec(upper, remaining);
+        for x in lower_proj.x..upper_proj.x {
+            for y in lower_proj.y..upper_proj.y {
+                let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                let line_of_blocks = extract_along_line(axis, p, blocks.as_slice());
+                let to_remove = locked_blocks_to_remove(line_of_blocks.as_slice());
+                blocks.retain(|b| !to_remove.contains(b));
+            }
+        }
+    }
 }
